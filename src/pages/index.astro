@@ -1,5 +1,5 @@
 ---
-import Welcome from '../components/Welcome.astro';
+import '../styles/index.scss';
 import Layout from '../layouts/Layout.astro';
 
 // Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
@@ -7,5 +7,203 @@ import Layout from '../layouts/Layout.astro';
 ---
 
 <Layout>
-	<Welcome />
+	<div class="text hidden">
+		<div class="letterset">  + LETTERSET</div>
+		<div class="download">  + DOWNLOAD</div>
+	</div>
+	
+	<div class="click-area"></div>
+	<div class="title">holepunch</div>
+	<div class="drawing"></div>
+	<div class="alphabet-overlay">
+		<div class="alphabet-row uppercase">A B C D E F G H I J K L M N O P Q R S T U V W X Y Z</div>
+		<div class="alphabet-row lowercase">a b c d e f g h i j k l m n o p q r s t u v w x y z</div>
+	</div>
+	
+	<script>
+		const title = document.querySelector('.title');
+		const text = document.querySelector('.text');
+		const letterset = document.querySelector('.letterset');
+		const downloadBtn = document.querySelector('.download');
+		const overlay = document.querySelector('.alphabet-overlay');
+		const clickSoundSrc = '/sounds/holepunchsound.mp3';
+		let titlePlayed = false;
+		let canDrawPeriods = false;
+
+		if (text) {
+			text.classList.add('hidden');
+		}
+
+		if (title) {
+			title.addEventListener('animationend', () => {
+				canDrawPeriods = true;
+				if (text) {
+					text.classList.remove('hidden');
+				}
+			}, { once: true });
+		}
+
+		if (letterset) {
+			letterset.addEventListener('click', (e) => {
+				e.stopPropagation();
+				showOverlay();
+			});
+		}
+
+		if (downloadBtn) {
+			downloadBtn.addEventListener('click', (e) => {
+				e.preventDefault();
+				e.stopPropagation();
+				draggedDuringDraw = false;
+				downloadFont();
+			});
+		}
+
+		function showOverlay() {
+			if (!overlay) return;
+			overlay.classList.add('show');
+			overlayActive = true;
+		}
+
+		function hideOverlay() {
+			if (!overlay) return;
+			overlay.classList.remove('show');
+			overlayActive = false;
+		}
+
+		function downloadFont() {
+			const link = document.createElement('a');
+			link.href = '/fonts/punchVF.ttf';
+			link.download = 'punchVF.ttf';
+			document.body.appendChild(link);
+			link.click();
+			document.body.removeChild(link);
+		}
+
+		document.addEventListener('click', (e) => {
+			const target = e.target as HTMLElement | null;
+			if (overlayActive) {
+				hideOverlay();
+				draggedDuringDraw = false;
+				return;
+			}
+			if (target && target.closest('.text')) {
+				draggedDuringDraw = false;
+				return;
+			}
+			if (title && !titlePlayed) {
+				title.classList.add('title-punch');
+				titlePlayed = true;
+				if (draggedDuringDraw) {
+					draggedDuringDraw = false;
+					return;
+				}
+				return; 
+			}
+			if (draggedDuringDraw) {
+				draggedDuringDraw = false;
+				return; 
+			}
+			if (!canDrawPeriods) {
+				draggedDuringDraw = false;
+				return;
+			}
+			createNumber(e.clientX, e.clientY);
+			draggedDuringDraw = false;
+		});
+		
+		function createNumber(x: number, y: number) {
+			const number = document.createElement('div');
+			number.className = 'period';
+			number.textContent = '.';
+			number.style.left = x + 'px';
+			number.style.top = y + 'px';
+			document.body.appendChild(number);
+			
+			const clickSound = new Audio(clickSoundSrc);
+			clickSound.play().catch(() => {});
+			
+			let variation = 0;
+			const interval = setInterval(() => {
+				variation += 10;
+				number.style.fontVariationSettings = `'HOLE' ${variation}`;
+				if (variation >= 50) {
+					clearInterval(interval);
+				}
+			}, 20);
+		}
+		
+		let draggedDuringDraw = false;
+		let isDrawing = false;
+		let currentColor = '#000';
+		let startX = 0;
+		let startY = 0;
+		let lastX = 0;
+		let lastY = 0;
+		const container = document.querySelector('.drawing');
+		let overlayActive = false;
+		
+		document.addEventListener('mousedown', (e) => {
+			const target = e.target as HTMLElement | null;
+			if (overlayActive) return;
+			if (target && target.closest('.text')) return;
+			isDrawing = true;
+			draggedDuringDraw = false;
+			currentColor = getRandomColor();
+			startX = e.clientX;
+			startY = e.clientY;
+			lastX = e.clientX;
+			lastY = e.clientY;
+		});
+		
+		document.addEventListener('mousemove', (e) => {
+			if (isDrawing) {
+				const totalDistance = Math.sqrt(
+					Math.pow(e.clientX - startX, 2) + Math.pow(e.clientY - startY, 2)
+				);
+				if (!draggedDuringDraw && totalDistance < 3) {
+					return; // treat as click until movement is meaningful
+				}
+				draggedDuringDraw = true;
+				const currentX = e.clientX;
+				const currentY = e.clientY;
+				const distance = Math.sqrt(
+					Math.pow(currentX - lastX, 2) + Math.pow(currentY - lastY, 2)
+				);
+				
+				// Create circles along the path to fill gaps
+				const steps = Math.max(1, Math.floor(distance / 2));
+				for (let i = 0; i <= steps; i++) {
+					const t = i / steps;
+					const x = lastX + (currentX - lastX) * t;
+					const y = lastY + (currentY - lastY) * t;
+					createSquare(x, y);
+				}
+				
+				lastX = currentX;
+				lastY = currentY;
+			}
+		});
+		
+		document.addEventListener('mouseup', () => {
+			isDrawing = false;
+		});
+		
+		function createSquare(x: number, y: number) {
+			if (!container) return;
+			const square = document.createElement('div');
+			square.className = 'draw-square';
+			square.style.left = (x - 1.5) + 'px';
+			square.style.top = (y - 1.5) + 'px';
+			square.style.backgroundColor = currentColor;
+			container.appendChild(square);
+		}
+
+		function getRandomColor() {
+			const r = Math.floor(Math.random() * 256);
+			const g = Math.floor(Math.random() * 256);
+			const b = Math.floor(Math.random() * 256);
+			return `rgb(${r}, ${g}, ${b})`;
+		}
+	</script>
 </Layout>
