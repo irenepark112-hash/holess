@@ -16,12 +16,12 @@ html {
 }
 
 .letterset {
-    font-family: "handwriting";
+    font-family: Helvetica, Arial, sans-serif;
     font-size: 1rem;
 }
 
 .download {
-    font-family: "handwriting";
+    font-family: Helvetica, Arial, sans-serif;
     font-size: 1rem;
     margin-top: 0.75rem;
 }
@@ -37,6 +37,7 @@ html {
 }
 
 .text.hidden {
+    font-family: Helvetica, Arial, sans-serif;
     opacity: 0;
     pointer-events: none;
 }
